@@ -37,20 +37,21 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 extern UART_HandleTypeDef huart1;
+extern ADC_HandleTypeDef hadc1;
 extern uint8_t Warn_Value;
-extern uint8_t RxBuff[1];      //½øÈëÖÐ¶Ï½ÓÊÕÊý¾ÝµÄÊý×é
-extern uint8_t DataBuff[256]; //±£´æ½ÓÊÕµ½µÄÊý¾ÝµÄÊý×é
-extern uint8_t RxLine;           //½ÓÊÕµ½µÄÊý¾Ý³¤¶È
+extern uint8_t RxBuff[1];      //ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½ï¿½
+extern uint8_t DataBuff[256]; //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½ï¿½
+extern uint8_t RxLine;           //ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý³ï¿½ï¿½ï¿½
 
-extern uint8_t CO_Value;     //Ò»Ñõ»¯Ì¼
-extern uint8_t Fire_Value;   //¿ÉÈ¼ÆøÌå
-extern uint8_t Air_Level;    //¿ÕÆøÖÊÁ¿
-extern uint8_t Temptrue_Value;     //ÎÂ¶È
+extern uint16_t CO_Value;     //Ò»ï¿½ï¿½ï¿½ï¿½Ì¼
+extern uint16_t Fire_Value;   //ï¿½ï¿½È¼ï¿½ï¿½ï¿½ï¿½
+extern uint16_t Air_Level;    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+extern uint16_t Temptrue_Value;     //ï¿½Â¶ï¿½
 
-extern uint8_t CO_Warn_Value;
-extern uint8_t Fire_Warn_Value;   //¿ÉÈ¼ÆøÌå
-extern uint8_t Air_Warn_Level;    //¿ÕÆøÖÊÁ¿
-extern uint8_t Temptrue_Warn_Value;     //ÎÂ¶È
+extern uint16_t CO_Warn_Value;
+extern uint16_t Fire_Warn_Value;   //ï¿½ï¿½È¼ï¿½ï¿½ï¿½ï¿½
+extern uint16_t Air_Warn_Level;    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+extern uint16_t Temptrue_Warn_Value;     //ï¿½Â¶ï¿½
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -71,6 +72,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define BUZZER_Pin GPIO_PIN_4
+#define BUZZER_GPIO_Port GPIOE
 #define MQ_9_Pin GPIO_PIN_3
 #define MQ_9_GPIO_Port GPIOA
 #define MQ_135_Pin GPIO_PIN_4

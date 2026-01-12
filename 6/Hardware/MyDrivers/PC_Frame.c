@@ -2,6 +2,7 @@
 #include "stm32f1xx_hal.h"
 #include "main.h"
 #include "stdio.h"
+#include "MQ.h"
 
 typedef struct DATAFRAME_{
     uint8_t h1;
@@ -23,12 +24,16 @@ void DataFrame_Set_Value(DataFrame *df){
     switch (df->uuid)
     {
     case DRIVER_MQ_9:
-        df->data[0] = 0x11;
-        df->data[1] = 0x22;
+        df->data[0] = ((CO_Value & 0xFF00) >> 8);
+        df->data[1] = (CO_Value & 0x00FF);
+        break;
+    case DRIVER_Fire:
+        df->data[0] = ((Fire_Value & 0xFF00) >> 8);
+        df->data[1] = (Fire_Value & 0x00FF);
         break;
     case DRIVER_MQ_135:
-        df->data[0] = 0x33;
-        df->data[1] = 0x44;
+        df->data[0] = ((Air_Level & 0xFF00) >> 8);
+        df->data[1] = (Air_Level & 0x00FF);
         break;
     case DRIVER_DHT11:
         df->data[0] = 0x55;
@@ -53,6 +58,10 @@ DataFrame DataFrame_Build(uint8_t uuid){
     {
     case DRIVER_MQ_9:
         res.uuid = DRIVER_MQ_9;
+        res.data_len = 2;
+        break;
+    case DRIVER_Fire:
+        res.uuid = DRIVER_Fire;
         res.data_len = 2;
         break;
     case DRIVER_MQ_135:

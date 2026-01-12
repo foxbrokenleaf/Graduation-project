@@ -11,6 +11,7 @@
 #define SET_FIRE_WARM          0x05      //  0xff
 #define SET_AIR_LEVEL_WARM          0x06      //  0xff
 #define SET_TEMPTRUE_WARM          0x07      //  0xff
+#define DRIVER_Fire                 0x08
 // DATA_CRC
 #define FRAME_END_1     0x55
 #define FRAME_END_2     0xaa

@@ -25,6 +25,7 @@
 #include "OLED.h"
 #include "PC_Frame.h"
 #include "string.h"
+#include "MQ.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -34,7 +35,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define ADC_CONV 0.0008
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -43,6 +44,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
 
@@ -51,19 +54,19 @@ uint8_t Serial_RxData[256];
 uint8_t System_Run_Flag = 0;
 // uint8_t Warn_Value = 0;
 
-uint8_t RxBuff[1];      //½øÈëÖÐ¶Ï½ÓÊÕÊý¾ÝµÄÊý×é
-uint8_t DataBuff[256]; //±£´æ½ÓÊÕµ½µÄÊý¾ÝµÄÊý×é
-uint8_t RxLine=0;           //½ÓÊÕµ½µÄÊý¾Ý³¤¶È
+uint8_t RxBuff[1];      //ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½ï¿½
+uint8_t DataBuff[256]; //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½ï¿?
+uint8_t RxLine=0;           //ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý³ï¿½ï¿½ï¿½
 
-uint8_t CO_Value = 0;     //Ò»Ñõ»¯Ì¼
-uint8_t Fire_Value = 0;   //¿ÉÈ¼ÆøÌå
-uint8_t Air_Level = 0;    //¿ÕÆøÖÊÁ¿
-uint8_t Temptrue_Value = 0;     //ÎÂ¶È
+uint16_t CO_Value = 0;     //Ò»ï¿½ï¿½ï¿½ï¿½Ì¼
+uint16_t Fire_Value = 0;   //ï¿½ï¿½È¼ï¿½ï¿½ï¿½ï¿½
+uint16_t Air_Level = 0;    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+uint16_t Temptrue_Value = 0;     //ï¿½Â¶ï¿½
 
-uint8_t CO_Warn_Value = 0;
-uint8_t Fire_Warn_Value = 0;   //¿ÉÈ¼ÆøÌå
-uint8_t Air_Warn_Level = 0;    //¿ÕÆøÖÊÁ¿
-uint8_t Temptrue_Warn_Value = 0;     //ÎÂ¶È
+uint16_t CO_Warn_Value = 0;
+uint16_t Fire_Warn_Value = 0;   //ï¿½ï¿½È¼ï¿½ï¿½ï¿½ï¿½
+uint16_t Air_Warn_Level = 0;    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+uint16_t Temptrue_Warn_Value = 0;     //ï¿½Â¶ï¿½
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,6 +74,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -111,15 +115,19 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   MX_USART1_UART_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   printf("Initialize all configured peripherals!\r\n");
   OLED_Init();
   printf("OLED has init!\r\n");
+  Calibrate_MQ9();
+  Calibrate_MQ135();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_UART_Receive_IT(&huart1, (uint8_t *)RxBuff, 1); //´ò¿ª´®¿ÚÖÐ¶Ï½ÓÊÕ
+  HAL_UART_Receive_IT(&huart1, (uint8_t *)RxBuff, 1); //ï¿½ò¿ª´ï¿½ï¿½ï¿½ï¿½Ð¶Ï½ï¿½ï¿½ï¿½
+  HAL_ADC_Start_IT(&hadc1);
   while (1)
   {
     
@@ -127,28 +135,41 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     
+    if(CO_Value > CO_Warn_Value || Fire_Value > Fire_Warn_Value || Air_Level > Air_Warn_Level) HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, (GPIO_PinState)RESET);
+    else HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, (GPIO_PinState)SET);
+    
+    CO_Value = MQ_9();
+    Fire_Value = MQ_9();
+    Air_Level = MQ_135();
     Receive_PC_Value(DataBuff, 256);
     // OLED_ShowHexNum(16, 0, System_Run_Flag++, 2, OLED_8X16);
     OLED_ShowString(0, 0, "CO=", OLED_8X16);
-    OLED_ShowNum(32, 0, CO_Value, 3, OLED_8X16);
+    OLED_ShowNum(32, 0, CO_Value, 4, OLED_8X16);
     OLED_ShowString(64, 0, "FR=", OLED_8X16);
-    OLED_ShowNum(96, 0, Fire_Value, 3, OLED_8X16);
+    OLED_ShowNum(96, 0, Fire_Value, 4, OLED_8X16);
     OLED_ShowString(0, 16, "AL=", OLED_8X16);
-    OLED_ShowNum(32, 16, Air_Level, 3, OLED_8X16);
+    OLED_ShowNum(32, 16, Air_Level, 4, OLED_8X16);
     OLED_ShowString(64, 16, "TE=", OLED_8X16);
-    OLED_ShowNum(96, 16, Temptrue_Value, 3, OLED_8X16);      
+    OLED_ShowNum(96, 16, Temptrue_Value, 4, OLED_8X16);      
 
     OLED_ShowString(0, 32, "WC=", OLED_8X16);
-    OLED_ShowNum(32, 32, CO_Warn_Value, 3, OLED_8X16);
+    OLED_ShowNum(32, 32, CO_Warn_Value, 4, OLED_8X16);
     OLED_ShowString(64, 32, "WF=", OLED_8X16);
-    OLED_ShowNum(96, 32, Fire_Warn_Value, 3, OLED_8X16);
+    OLED_ShowNum(96, 32, Fire_Warn_Value, 4, OLED_8X16);
     OLED_ShowString(0, 48, "WA=", OLED_8X16);
-    OLED_ShowNum(32, 48, Air_Warn_Level, 3, OLED_8X16);
+    OLED_ShowNum(32, 48, Air_Warn_Level, 4, OLED_8X16);
     OLED_ShowString(64, 48, "WT=", OLED_8X16);
-    OLED_ShowNum(96, 48, Temptrue_Warn_Value, 3, OLED_8X16);           
+    OLED_ShowNum(96, 48, Temptrue_Warn_Value, 4, OLED_8X16);           
     OLED_Update();
-    OLED_Clear();
+    Send_Driver_Info(DRIVER_MQ_9);
     HAL_Delay(500);
+    Send_Driver_Info(DRIVER_Fire);
+    HAL_Delay(500);
+    Send_Driver_Info(DRIVER_MQ_135);
+    HAL_Delay(500);
+    Send_Driver_Info(DRIVER_DHT11);
+    HAL_Delay(500);
+    OLED_Clear();
   }
   /* USER CODE END 3 */
 }
@@ -161,6 +182,7 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -187,6 +209,59 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+  PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV2;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Common config
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_3;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -268,16 +343,22 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, OLED_SCL_Pin|OLED_SDA_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : MQ_9_Pin MQ_135_Pin */
-  GPIO_InitStruct.Pin = MQ_9_Pin|MQ_135_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  /*Configure GPIO pin : BUZZER_Pin */
+  GPIO_InitStruct.Pin = BUZZER_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(BUZZER_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : OLED_SCL_Pin OLED_SDA_Pin */
   GPIO_InitStruct.Pin = OLED_SCL_Pin|OLED_SDA_Pin;
@@ -299,11 +380,11 @@ int fputc(int ch, FILE *f) {
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef*UartHandle)
 {
-    RxLine++;                      //Ã¿½ÓÊÕµ½Ò»¸öÊý¾Ý£¬½øÈë»Øµ÷Êý¾Ý³¤¶È¼Ó1
-    DataBuff[RxLine-1]=RxBuff[0];  //°ÑÃ¿´Î½ÓÊÕµ½µÄÊý¾Ý±£´æµ½»º´æÊý×é
+    RxLine++;                      //Ã¿ï¿½ï¿½ï¿½Õµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½Ý³ï¿½ï¿½È¼ï¿?1
+    DataBuff[RxLine-1]=RxBuff[0];  //ï¿½ï¿½Ã¿ï¿½Î½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý±ï¿½ï¿½æµ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
     RxBuff[0]=0;
-    HAL_UART_Receive_IT(&huart1, (uint8_t *)RxBuff, 1); //Ã¿½ÓÊÕÒ»¸öÊý¾Ý£¬¾Í´ò¿ªÒ»´Î´®¿ÚÖÐ¶Ï½ÓÊÕ£¬·ñÔòÖ»»á½ÓÊÕÒ»¸öÊý¾Ý¾ÍÍ£Ö¹½ÓÊÕ
+    HAL_UART_Receive_IT(&huart1, (uint8_t *)RxBuff, 1); //Ã¿ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Í´ï¿½Ò»ï¿½Î´ï¿½ï¿½ï¿½ï¿½Ð¶Ï½ï¿½ï¿½Õ£ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý¾ï¿½Í£Ö¹ï¿½ï¿½ï¿½ï¿?
 }
 
 void Clear_ReceiveBuff(){
