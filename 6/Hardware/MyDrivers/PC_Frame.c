@@ -155,6 +155,7 @@ uint8_t Receive_PC_Value(const uint8_t* DataBuff, uint16_t buffSize)
     {
         return 0;  // 未找到帧头
     }
+    printf("Found freame of head\r\n");
     
     // 4. 查找帧尾 (55 AA)，从帧头后开始查找
     for (footerPos = headerPos + 4; footerPos <= buffSize - 2; footerPos++)  // 从长度字节后开始
@@ -170,7 +171,7 @@ uint8_t Receive_PC_Value(const uint8_t* DataBuff, uint16_t buffSize)
     {
         return 0;  // 未找到帧尾
     }
-    
+    printf("Found freame of end\r\n");
     // 5. 解析数据长度
     dataLength = DataBuff[headerPos + 2];
     
@@ -239,19 +240,19 @@ uint8_t Receive_PC_Value(const uint8_t* DataBuff, uint16_t buffSize)
     {
     case SET_CO_WARM:
         printf("SET_CO_WARM\r\n");
-        CO_Warn_Value = dat[0];
+        CO_Warn_Value = (dat[0] << 8) | dat[1];
         printf("CO_Warn_Value = %d\r\n", CO_Warn_Value);
         Clear_ReceiveBuff();
         break;
     case SET_FIRE_WARM:
         printf("SET_FIRE_WARM\r\n");
-        Fire_Warn_Value = dat[0];
+        Fire_Warn_Value = (dat[0] << 8) | dat[1];
         printf("Fire_Warn_Value = %d\r\n", Fire_Warn_Value);
         Clear_ReceiveBuff();
         break;
     case SET_AIR_LEVEL_WARM:
         printf("SET_AIR_LEVEL_WARM\r\n");
-        Air_Warn_Level = dat[0];
+        Air_Warn_Level = (dat[0] << 8) | dat[1];
         printf("Air_Warn_Level = %d\r\n", Air_Warn_Level);
         Clear_ReceiveBuff();
         break;

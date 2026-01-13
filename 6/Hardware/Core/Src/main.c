@@ -162,13 +162,13 @@ int main(void)
     OLED_ShowNum(96, 48, Temptrue_Warn_Value, 4, OLED_8X16);           
     OLED_Update();
     Send_Driver_Info(DRIVER_MQ_9);
-    HAL_Delay(500);
+    // HAL_Delay(500);
     Send_Driver_Info(DRIVER_Fire);
-    HAL_Delay(500);
+    // HAL_Delay(500);
     Send_Driver_Info(DRIVER_MQ_135);
-    HAL_Delay(500);
+    // HAL_Delay(500);
     Send_Driver_Info(DRIVER_DHT11);
-    HAL_Delay(500);
+    // HAL_Delay(500);
     OLED_Clear();
   }
   /* USER CODE END 3 */

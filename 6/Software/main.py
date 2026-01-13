@@ -253,8 +253,8 @@ class SensorMonitorApp:
         threshold_configs = [
             ('co', '一氧化碳阈值:', 50, 'ppm', '0-100 ppm'),
             ('fire', '可燃气体阈值:', 30, '%LEL', '0-50 %LEL'),
-            ('air', '空气质量阈值:', 100, 'AQI', '0-150 AQI'),
-            ('temp', '温度阈值:', 35, '°C', '15-35 °C')
+            ('air', '空气质量阈值:', 100, 'AQI', '0-150 AQI')
+            #('temp', '温度阈值:', 35, '°C', '15-35 °C')
         ]
         
         for i, (key, label_text, default_value, unit, range_text) in enumerate(threshold_configs):
@@ -642,9 +642,12 @@ class SensorMonitorApp:
             self.debug_print(f"更新显示时出错: {e}")
     
     def set_thresholds(self):
-        """设置阈值"""
+        """设置阈值并通过串口发送到STM32"""
         try:
-            for key, var in self.threshold_vars.items():
+            success_count = 0
+            total_count = len(self.threshold_vars)
+            
+            for i, (key, var) in enumerate(self.threshold_vars.items()):
                 try:
                     new_threshold = float(var.get())
                     if new_threshold < 0:
@@ -659,24 +662,113 @@ class SensorMonitorApp:
                         self.sensor_data[key]['threshold_label'].config(
                             text=f"当前: {new_threshold:.1f} {unit}")
                     
-                    self.debug_print(f"设置 {key} 阈值为: {new_threshold}")
+                    # 通过串口发送阈值设置到STM32
+                    if self.send_threshold_to_stm32(key, new_threshold):
+                        success_count += 1
+                        self.debug_print(f"成功设置 {key} 阈值为: {new_threshold}")
+                    else:
+                        self.debug_print(f"设置 {key} 阈值发送失败")
+                    
+                    # 如果不是最后一个阈值，等待1秒再发送下一个
+                    if i < total_count - 1:
+                        self.debug_print(f"等待1秒后发送下一个阈值...")
+                        time.sleep(1)
                     
                 except ValueError as e:
                     messagebox.showerror("输入错误", 
                         f"{self.sensor_data[key]['label']}阈值输入无效: {str(e)}")
                     return
             
-            messagebox.showinfo("成功", "阈值已更新")
+            if success_count == total_count:
+                messagebox.showinfo("成功", f"所有{total_count}个阈值已更新并发送到STM32")
+            elif success_count > 0:
+                messagebox.showwarning("部分成功", 
+                    f"{success_count}/{total_count}个阈值已更新并发送到STM32")
+            else:
+                messagebox.showerror("失败", "所有阈值发送到STM32失败")
             
         except Exception as e:
             self.debug_print(f"设置阈值时出错: {e}")
             messagebox.showerror("错误", f"设置阈值时出错: {str(e)}")
-    
+
+    def send_threshold_to_stm32(self, sensor_key, value):
+        """发送阈值设置命令到STM32"""
+        if not self.connected or not self.serial_port:
+            self.debug_print("串口未连接，无法发送阈值设置")
+            return False
+        
+        try:
+            # 阈值标识符映射
+            threshold_ids = {
+                'co': 0x04,     # 一氧化碳阈值
+                'fire': 0x05,   # 可燃气体阈值
+                'air': 0x06,    # 空气质量阈值
+                'temp': 0x07    # 温度阈值
+            }
+            
+            if sensor_key not in threshold_ids:
+                self.debug_print(f"未知的传感器键: {sensor_key}")
+                return False
+            
+            threshold_id = threshold_ids[sensor_key]
+            
+            # 将浮点数转换为整数（根据传感器类型）
+            if sensor_key == 'fire':
+                # 可燃气体需要乘以10（因为接收时除以10）
+                int_value = int(value * 10)
+            elif sensor_key == 'temp':
+                # 温度直接取整
+                int_value = int(value)
+            else:
+                # 其他传感器直接取整
+                int_value = int(value)
+            
+            # 确保值在合理范围内
+            int_value = max(0, min(65535, int_value))  # 限制在0-65535范围内
+            
+            # 构建数据帧：AA 55 数据长度 阈值ID 数据高位 数据低位 校验和 55 AA
+            frame = bytearray()
+            frame.extend([0xAA, 0x55])          # 帧头
+            frame.append(0x02)                  # 数据长度：阈值ID(1) + 数据(2) = 3
+            frame.append(threshold_id)          # 阈值标识符
+            
+            # 添加2字节数据（高位在前）
+            frame.append((int_value >> 8) & 0xFF)  # 高位
+            frame.append(int_value & 0xFF)         # 低位
+            
+            # 计算校验和（从帧头到数据的所有字节的和，取低8位）
+            checksum = sum(frame) & 0xFF
+            checksum = (checksum + 0x55 + 0xAA) & 0xFF
+            frame.append(checksum)              # 校验和
+            
+            frame.extend([0x55, 0xAA])          # 帧尾
+            
+            # 发送数据
+            self.serial_port.write(frame)
+            
+            # 显示发送的数据帧
+            hex_frame = ' '.join([f'{b:02X}' for b in frame])
+            self.debug_print(f"发送阈值设置帧: {hex_frame}")
+            self.debug_print(f"阈值设置 - 传感器: {sensor_key}, ID: 0x{threshold_id:02X}, 值: {value} -> 0x{int_value:04X}")
+            
+            # 在界面上显示发送的数据
+            self.root.after(0, lambda f=hex_frame: self.frame_display.config(
+                text=f"发送阈值: {f}"))
+            
+            return True
+            
+        except Exception as e:
+            self.debug_print(f"发送阈值设置失败: {e}")
+            return False
+
     def reset_thresholds(self):
-        """恢复默认阈值"""
+        """恢复默认阈值并通过串口发送到STM32"""
         default_values = {'co': 50, 'fire': 30, 'air': 100, 'temp': 35}
         
-        for key, default_value in default_values.items():
+        success_count = 0
+        total_count = len(default_values)
+        
+        for i, (key, default_value) in enumerate(default_values.items()):
             self.threshold_vars[key].set(str(default_value))
             self.sensor_data[key]['threshold'] = default_value
             
@@ -686,9 +778,25 @@ class SensorMonitorApp:
                 self.sensor_data[key]['threshold_label'].config(
                     text=f"当前: {default_value} {unit}")
             
-            self.debug_print(f"重置 {key} 阈值为默认值: {default_value}")
+            # 通过串口发送阈值设置到STM32
+            if self.send_threshold_to_stm32(key, default_value):
+                success_count += 1
+                self.debug_print(f"成功重置 {key} 阈值为默认值: {default_value}")
+            else:
+                self.debug_print(f"重置 {key} 阈值发送失败")
+            
+            # 如果不是最后一个阈值，等待1秒再发送下一个
+            if i < total_count - 1:
+                self.debug_print(f"等待1秒后发送下一个阈值...")
+                time.sleep(1)
         
-        messagebox.showinfo("成功", "已恢复默认阈值")
+        if success_count == total_count:
+            messagebox.showinfo("成功", f"所有{total_count}个默认阈值已发送到STM32")
+        elif success_count > 0:
+            messagebox.showwarning("部分成功", 
+                f"{success_count}/{total_count}个默认阈值已发送到STM32")
+        else:
+            messagebox.showerror("失败", "所有默认阈值发送到STM32失败")
     
     def show_help(self):
         """显示帮助信息"""
