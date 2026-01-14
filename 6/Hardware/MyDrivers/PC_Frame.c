@@ -3,6 +3,7 @@
 #include "main.h"
 #include "stdio.h"
 #include "MQ.h"
+#include "WiFi.h"
 
 typedef struct DATAFRAME_{
     uint8_t h1;
@@ -107,6 +108,7 @@ void Send_Driver_Info(uint8_t UUID){
     uint8_t TxAry[10];
     DataFrame tmpTx = DataFrame_Build(UUID);
     DataFrame2Arrary(&tmpTx, TxAry);
+    ESP01S_SendData(0, TxAry, DataFrameTotalLenght(&tmpTx));
     HAL_UART_Transmit(&huart1, TxAry, DataFrameTotalLenght(&tmpTx), HAL_MAX_DELAY);
 }
 

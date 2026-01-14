@@ -27,6 +27,7 @@
 #include "string.h"
 #include "MQ.h"
 #include "DHT11.h"
+#include "WiFi.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +50,7 @@ ADC_HandleTypeDef hadc1;
 
 TIM_HandleTypeDef htim2;
 
+UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
 
@@ -58,11 +60,11 @@ uint8_t System_Run_Flag = 0;
 // uint8_t Warn_Value = 0;
 
 uint8_t RxBuff[1];      //ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½ï¿½
-uint8_t DataBuff[256]; //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½ï¿?????????????????
+uint8_t DataBuff[256]; //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½ï¿???????????????????
 uint8_t RxLine=0;           //ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý³ï¿½ï¿½ï¿½
 
 uint8_t RxBuff_3[1];      //ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶Ï½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½ï¿½
-uint8_t DataBuff_3[256]; //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½ï¿?????????????????
+uint8_t DataBuff_3[256]; //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ýµï¿½ï¿½ï¿½ï¿½ï¿???????????????????
 uint8_t RxLine_3=0;           //ï¿½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý³ï¿½ï¿½ï¿½
 
 uint16_t CO_Value = 0;     //Ò»ï¿½ï¿½ï¿½ï¿½Ì¼
@@ -94,6 +96,7 @@ static void MX_USART1_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_USART3_UART_Init(void);
+static void MX_UART4_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -136,6 +139,7 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM2_Init();
   MX_USART3_UART_Init();
+  MX_UART4_Init();
   /* USER CODE BEGIN 2 */
   printf("Initialize all configured peripherals!\r\n");
   OLED_Init();
@@ -161,9 +165,58 @@ int main(void)
   
   HAL_ADC_Start_IT(&hadc1);
   printf("ADC has init!\r\n");
+  ESP01S_Init(&huart4);
+  printf("ESP-01S has init!\r\n");
+  // ÉèÖÃÊý¾Ý½ÓÊÕ»Øµ÷
+  ESP01S_SetDataCallback(ESP01S_DataReceived);
   // HAL_TIM_Base_Start_IT(&htim2);
   // printf("TIM has init!\r\n");
   // HAL_TIM_Base_Start(&htim1);
+
+    if (ESP01S_Test() == ESP01S_OK)
+    {
+        printf("ESP-01S Ready!\r\n");
+    }
+
+    
+    if (ESP01S_Restart() == ESP01S_OK)
+    {
+        printf("ESP-01S Restart!\r\n");
+    }
+    
+    if (ESP01S_Test() == ESP01S_OK)
+    {
+        printf("ESP-01S Ready!\r\n");
+    }    
+
+    if (ESP01S_ConnectAP("FBLPC", "12345678") == ESP01S_OK)
+    {
+        printf("ESP-01S Connect Wi-Fi!\r\n");
+    }    
+
+    switch (ESP01S_StartUDP("192.168.137.1", 8080, 8080, 2, 0))
+    {
+      case ESP01S_OK:
+          printf("ESP-01S Start UDP!\r\n");
+          
+        break;
+      case ESP01S_ERROR:
+          printf("ESP-01S Start UDP ERROR!\r\n");
+        break;
+      case ESP01S_TIMEOUT:
+          printf("ESP-01S Start UDP TIMEOUT!\r\n");
+        break;
+      case ESP01S_BUSY:
+          printf("ESP-01S Start UDP BUSY!\r\n");
+        break;                        
+      
+      default:
+        break;
+    }
+
+ 
+    
+
   while (1)
   {
     
@@ -219,7 +272,40 @@ int main(void)
       // SendDataFlag = 0;
     }
 
+    // ´¦Àí½ÓÊÕÊý¾Ý
+    ESP01S_ProcessBuffer();
     
+    // ¼ì²éÊÇ·ñÓÐÊý¾Ý¿ÉÓÃ£¨ÂÖÑ¯·½Ê½£©
+    if (ESP01S_HasData())
+    {
+        uint8_t buffer[256];
+        uint16_t len = ESP01S_ReadData(buffer, sizeof(buffer));
+        
+        printf("[Polling] Received %d bytes: ", len);
+        for (uint16_t i = 0; i < len && i < 32; i++)
+        {
+          DataBuff[i] = buffer[i];
+
+          printf("%02X ", buffer[i]);
+        }
+        printf("\r\n");
+    }
+    
+    // // ¶¨Ê±·¢ËÍÊý¾Ý£¨Ã¿5Ãë£©
+    // static uint32_t last_send_time = 0;
+    // if (HAL_GetTick() - last_send_time > 5000)
+    // {
+    //     char timestamp[32];
+    //     snprintf(timestamp, sizeof(timestamp), "Time: %lu", HAL_GetTick());
+        
+    //     ESP01S_Status status = ESP01S_SendDataWithResult(0, timestamp, strlen(timestamp), 1000);
+    //     if (status == ESP01S_OK)
+    //     {
+    //         printf("Sent: %s\r\n", timestamp);
+    //     }
+        
+    //     last_send_time = HAL_GetTick();
+    // }    
     // DHT11_Get_Values(&f_Temptrue_Value, &f_humi_Value);
     // DHT11_Print_Debug_Info();
     
@@ -240,7 +326,7 @@ int main(void)
       if(DataBuff_3[3] >= '0' && DataBuff_3[3] <= '9')
       if(DataBuff_3[4] == 'C');
       // printf("Temptrue_Value = %d\r\n", Temptrue_Value);
-    }
+    }     
     
     // HAL_Delay(1000);
   }
@@ -385,6 +471,39 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief UART4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_UART4_Init(void)
+{
+
+  /* USER CODE BEGIN UART4_Init 0 */
+
+  /* USER CODE END UART4_Init 0 */
+
+  /* USER CODE BEGIN UART4_Init 1 */
+
+  /* USER CODE END UART4_Init 1 */
+  huart4.Instance = UART4;
+  huart4.Init.BaudRate = 115200;
+  huart4.Init.WordLength = UART_WORDLENGTH_8B;
+  huart4.Init.StopBits = UART_STOPBITS_1;
+  huart4.Init.Parity = UART_PARITY_NONE;
+  huart4.Init.Mode = UART_MODE_TX_RX;
+  huart4.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart4.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN UART4_Init 2 */
+
+  /* USER CODE END UART4_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -466,9 +585,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, OLED_SCL_Pin|OLED_SDA_Pin, GPIO_PIN_RESET);
@@ -503,20 +623,21 @@ int fputc(int ch, FILE *f) {
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef*UartHandle)
 {
   if(UartHandle->Instance == USART1){
-    RxLine++;                      //Ã¿ï¿½ï¿½ï¿½Õµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½Ý³ï¿½ï¿½È¼ï¿?????????????????1
+    RxLine++;                      //Ã¿ï¿½ï¿½ï¿½Õµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½Ý³ï¿½ï¿½È¼ï¿???????????????????1
     DataBuff[RxLine-1]=RxBuff[0];  //ï¿½ï¿½Ã¿ï¿½Î½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý±ï¿½ï¿½æµ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
     RxBuff[0]=0;
-    HAL_UART_Receive_IT(&huart1, (uint8_t *)RxBuff, 1); //Ã¿ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Í´ï¿½Ò»ï¿½Î´ï¿½ï¿½ï¿½ï¿½Ð¶Ï½ï¿½ï¿½Õ£ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý¾ï¿½Í£Ö¹ï¿½ï¿½ï¿½ï¿?????????????????
+    HAL_UART_Receive_IT(&huart1, (uint8_t *)RxBuff, 1); //Ã¿ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Í´ï¿½Ò»ï¿½Î´ï¿½ï¿½ï¿½ï¿½Ð¶Ï½ï¿½ï¿½Õ£ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý¾ï¿½Í£Ö¹ï¿½ï¿½ï¿½ï¿???????????????????
   }
   if(UartHandle->Instance == USART3){
-    RxLine_3++;                      //Ã¿ï¿½ï¿½ï¿½Õµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½Ý³ï¿½ï¿½È¼ï¿?????????????????1
+    RxLine_3++;                      //Ã¿ï¿½ï¿½ï¿½Õµï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½Ý³ï¿½ï¿½È¼ï¿???????????????????1
     DataBuff_3[RxLine_3-1]=RxBuff_3[0];  //ï¿½ï¿½Ã¿ï¿½Î½ï¿½ï¿½Õµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ý±ï¿½ï¿½æµ½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
     RxLine_3 %= 17;
     RxBuff_3[0]=0;
-    HAL_UART_Receive_IT(&huart3, (uint8_t *)RxBuff_3, 1); //Ã¿ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Í´ï¿½Ò»ï¿½Î´ï¿½ï¿½ï¿½ï¿½Ð¶Ï½ï¿½ï¿½Õ£ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý¾ï¿½Í£Ö¹ï¿½ï¿½ï¿½ï¿?????????????????
+    HAL_UART_Receive_IT(&huart3, (uint8_t *)RxBuff_3, 1); //Ã¿ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½ï¿½Í´ï¿½Ò»ï¿½Î´ï¿½ï¿½ï¿½ï¿½Ð¶Ï½ï¿½ï¿½Õ£ï¿½ï¿½ï¿½ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½Ý¾ï¿½Í£Ö¹ï¿½ï¿½ï¿½ï¿???????????????????
   }
+  HAL_UART_RxCpltCallback_WiFi(&huart4);
 
 }
 
@@ -535,6 +656,35 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 uint8_t Read_Temperature(void){
     return Temptrue_Value;
+}
+
+// »Øµ÷º¯ÊýÊµÏÖÊ¾Àý
+void ESP01S_DataReceived(uint8_t link_id, uint8_t *data, uint16_t length)
+{
+    // link_id: Á¬½ÓID£¨¶àÁ¬½ÓÄ£Ê½ÏÂÓÐÐ§£©
+    // data: ½ÓÊÕµ½µÄÊý¾ÝÖ¸Õë
+    // length: Êý¾Ý³¤¶È
+    
+    // printf("Received from link %d, length: %d\n", link_id, length);
+    
+    // ´¦ÀíÊý¾Ý...
+    if (length > 0)
+    {
+        // printf("Data: ");
+        for (uint16_t i = 0; i < length; i++)
+        {
+            // ÒÔ16½øÖÆºÍASCIIÁ½ÖÖ¸ñÊ½ÏÔÊ¾
+            if (data[i] >= 32 && data[i] <= 126) // ¿É´òÓ¡×Ö·û
+            {
+                // printf("%c", data[i]);
+            }
+            else
+            {
+                // printf("[0x%02X]", data[i]);
+            }
+        }
+        // printf("\n");
+    }
 }
 
 /* USER CODE END 4 */

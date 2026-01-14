@@ -90,6 +90,7 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 void Clear_ReceiveBuff();
 uint8_t Read_Temperature(void);
+void ESP01S_DataReceived(uint8_t link_id, uint8_t *data, uint16_t length);
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
