@@ -44,6 +44,8 @@ virtualFolder:
             - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_exti.c
             - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc.c
             - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_adc_ex.c
+            - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c
+            - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c
           folders: []
         - name: CMSIS
           files:
@@ -63,6 +65,7 @@ targets:
         - USE_HAL_DRIVER
         - STM32F103xE
         - STM32F10X_HD
+        - DHT11_DEBUG
       incList:
         - .
         - ../Core/Inc

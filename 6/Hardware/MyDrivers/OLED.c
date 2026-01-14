@@ -80,7 +80,7 @@
   * 才会将显存数组的数据发送到OLED硬件，进行显示
   */
 uint8_t OLED_DisplayBuf[8][128];
-#define OLED_ADDR 0X78
+#define OLED_ADDR 0X7A
 
 /*********************全局变量*/
 

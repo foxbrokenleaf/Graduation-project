@@ -36,7 +36,7 @@ void DataFrame_Set_Value(DataFrame *df){
         df->data[1] = (Air_Level & 0x00FF);
         break;
     case DRIVER_DHT11:
-        df->data[0] = 0x55;
+        df->data[0] = Temptrue_Value;
         break;             
     default:
         break;

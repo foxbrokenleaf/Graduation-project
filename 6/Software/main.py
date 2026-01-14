@@ -28,7 +28,6 @@ class SensorMonitorApp:
         self.running = True
         self.receive_buffer = bytearray()
         self.last_receive_time = time.time()
-        self.buffer_timeout = 0.1  # 100ms超时
         
         # 串口配置
         self.port_var = StringVar()
@@ -105,7 +104,7 @@ class SensorMonitorApp:
             self.debug_print(f"扫描串口失败: {e}")
     
     def create_widgets(self):
-        """创建所有界面组件 - 和之前一样"""
+        """创建所有界面组件"""
         # 创建主容器
         self.main_container = ttk.Frame(self.root)
         self.main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -124,7 +123,7 @@ class SensorMonitorApp:
         self.create_threshold_area()
     
     def create_serial_control(self):
-        """创建串口控制区域 - 和之前一样"""
+        """创建串口控制区域"""
         serial_frame = ttk.LabelFrame(self.main_container, text="串口设置", padding="10")
         serial_frame.grid(row=0, column=0, sticky='ew', padx=5, pady=5)
         
@@ -155,7 +154,7 @@ class SensorMonitorApp:
         self.frame_display.grid(row=1, column=0, columnspan=7, padx=5, pady=5, sticky='w')
     
     def create_chart_area(self):
-        """创建图表区域 - 和之前一样"""
+        """创建图表区域"""
         self.chart_container = ttk.LabelFrame(self.main_container, text="传感器历史数据", padding="5")
         self.chart_container.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         
@@ -193,7 +192,7 @@ class SensorMonitorApp:
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
     
     def create_sensor_display(self):
-        """创建传感器数据显示区域 - 和之前一样"""
+        """创建传感器数据显示区域"""
         self.sensor_container = ttk.LabelFrame(self.main_container, text="当前传感器数值", padding="5")
         self.sensor_container.grid(row=2, column=0, sticky='nsew', padx=5, pady=5)
         
@@ -243,7 +242,7 @@ class SensorMonitorApp:
             self.sensor_frames.append(frame)
     
     def create_threshold_area(self):
-        """创建阈值设置区域 - 和之前一样"""
+        """创建阈值设置区域"""
         self.threshold_container = ttk.LabelFrame(self.main_container, text="阈值设置", padding="10")
         self.threshold_container.grid(row=3, column=0, sticky='nsew', padx=5, pady=5)
         
@@ -254,7 +253,6 @@ class SensorMonitorApp:
             ('co', '一氧化碳阈值:', 50, 'ppm', '0-100 ppm'),
             ('fire', '可燃气体阈值:', 30, '%LEL', '0-50 %LEL'),
             ('air', '空气质量阈值:', 100, 'AQI', '0-150 AQI')
-            #('temp', '温度阈值:', 35, '°C', '15-35 °C')
         ]
         
         for i, (key, label_text, default_value, unit, range_text) in enumerate(threshold_configs):
@@ -345,9 +343,8 @@ class SensorMonitorApp:
                 timeout=0.5
             )
             
-            # 设置较小的读取超时和较大的缓冲区
+            # 设置较小的读取超时
             self.serial_port.timeout = 0.1
-            self.serial_port.inter_byte_timeout = 0.1
             
             self.connected = True
             self.connect_button.config(text="关闭串口")
@@ -379,7 +376,7 @@ class SensorMonitorApp:
         self.frame_display.config(text="接收数据: 无")
     
     def read_serial_data(self):
-        """读取串口数据 - 改进版本，处理分割接收"""
+        """读取串口数据"""
         self.debug_print("串口读取线程启动")
         
         while self.running and self.connected:
@@ -389,35 +386,26 @@ class SensorMonitorApp:
                     data = self.serial_port.read(self.serial_port.in_waiting or 1)
                     
                     if data:
-                        current_time = time.time()
-                        time_since_last = current_time - self.last_receive_time
-                        self.last_receive_time = current_time
-                        
-                        self.debug_print(f"收到 {len(data)} 字节数据，距离上次接收: {time_since_last*1000:.1f}ms")
-                        
-                        # 显示原始数据
-                        hex_str = ' '.join([f'{b:02X}' for b in data])
-                        short_str = hex_str[:50] + ('...' if len(hex_str) > 50 else '')
-                        self.root.after(0, lambda s=short_str: self.frame_display.config(
-                            text=f"接收: {s}"))
+                        # 更新最后接收时间
+                        self.last_receive_time = time.time()
                         
                         # 添加到缓冲区
                         self.receive_buffer.extend(data)
                         
-                        # 如果距离上次接收时间较长，可能是新的一帧开始
-                        if time_since_last > self.buffer_timeout:
-                            self.debug_print("检测到较长时间间隔，可能是新帧开始")
-                            self.parse_data_frames()
-                        else:
-                            # 短时间内连续接收，等待更多数据
-                            self.debug_print("短时间内连续接收，等待更多数据")
+                        # 显示接收到的数据
+                        hex_str = ' '.join([f'{b:02X}' for b in data])
+                        short_str = hex_str[:60] + ('...' if len(hex_str) > 60 else '')
+                        self.root.after(0, lambda s=short_str: self.frame_display.config(
+                            text=f"收到: {s}"))
                 
-                # 检查是否需要解析（处理最后一段数据）
-                if len(self.receive_buffer) > 0 and time.time() - self.last_receive_time > self.buffer_timeout:
-                    self.debug_print("缓冲区有数据且超时，开始解析")
-                    self.parse_data_frames()
+                # 定期解析数据
+                if len(self.receive_buffer) >= 20:
+                    self.parse_data_frames_simple()
+                elif len(self.receive_buffer) > 0:
+                    current_time = time.time()
+                    if current_time - self.last_receive_time > 0.2:
+                        self.parse_data_frames_simple()
                 
-                # 短暂的延迟
                 time.sleep(0.01)
                 
             except Exception as e:
@@ -426,95 +414,86 @@ class SensorMonitorApp:
         
         self.debug_print("串口读取线程结束")
     
-    def parse_data_frames(self):
-        """解析数据帧 - 简化版本，直接根据已知帧结构解析"""
+    def parse_data_frames_simple(self):
+        """简化版的解析逻辑 - 直接查找完整帧"""
+        if len(self.receive_buffer) < 7:
+            return
+        
         self.debug_print(f"开始解析，缓冲区大小: {len(self.receive_buffer)} 字节")
         
-        if len(self.receive_buffer) > 0:
-            hex_str = ' '.join([f'{b:02X}' for b in self.receive_buffer[:50]])
-            self.debug_print(f"缓冲区内容: {hex_str}")
+        # 显示缓冲区内容
+        hex_buffer = ' '.join([f'{b:02X}' for b in self.receive_buffer[:100]])
+        if len(self.receive_buffer) > 100:
+            hex_buffer += f" ... (总共{len(self.receive_buffer)}字节)"
+        self.debug_print(f"缓冲区内容: {hex_buffer}")
         
         frames_parsed = 0
+        i = 0
         
-        while len(self.receive_buffer) >= 9:
-            # 查找帧头 AA 55
-            try:
-                start_idx = self.receive_buffer.index(b'\xAA\x55')
-            except ValueError:
-                # 没有找到帧头
-                self.debug_print("缓冲区中没有找到帧头")
-                break
+        while i < len(self.receive_buffer):
+            # 先检查温度帧 - 根据实际数据，温度帧是8字节：AA 55 01 03 数据 校验和 55 AA
+            if i + 8 <= len(self.receive_buffer):
+                # 温度帧格式: AA 55 01 03 数据 校验和 55 AA (8字节)
+                if (self.receive_buffer[i] == 0xAA and 
+                    self.receive_buffer[i+1] == 0x55 and
+                    self.receive_buffer[i+2] == 0x01 and
+                    self.receive_buffer[i+3] == 0x03 and
+                    self.receive_buffer[i+6] == 0x55 and  # 位置6是55
+                    self.receive_buffer[i+7] == 0xAA):    # 位置7是AA
+                    
+                    # 提取温度数据
+                    raw_value = self.receive_buffer[i+4]
+                    hex_frame = ' '.join([f'{b:02X}' for b in self.receive_buffer[i:i+8]])
+                    self.debug_print(f"✓ 找到温度帧 (位置{i}): {hex_frame}")
+                    self.debug_print(f"  温度值: {raw_value}°C")
+                    self.debug_print(f"  校验和: 0x{self.receive_buffer[i+5]:02X}")
+                    
+                    self.process_sensor_data(0x03, raw_value)
+                    frames_parsed += 1
+                    self.root.after(0, lambda f=hex_frame: self.frame_display.config(
+                        text=f"解析温度: {f}"))
+                    
+                    i += 8
+                    continue
             
-            # 移除帧头之前的数据
-            if start_idx > 0:
-                removed = self.receive_buffer[:start_idx]
-                self.debug_print(f"移除 {len(removed)} 字节无效数据")
-                self.receive_buffer = self.receive_buffer[start_idx:]
-                continue
+            # 检查其他传感器帧 (9字节)
+            if i + 9 <= len(self.receive_buffer):
+                # 传感器帧格式: AA 55 02 传感器ID 数据高 数据低 校验和 55 AA
+                if (self.receive_buffer[i] == 0xAA and 
+                    self.receive_buffer[i+1] == 0x55 and
+                    self.receive_buffer[i+2] == 0x02 and
+                    self.receive_buffer[i+7] == 0x55 and
+                    self.receive_buffer[i+8] == 0xAA):
+                    
+                    # 传感器ID
+                    sensor_id = self.receive_buffer[i+3]
+                    
+                    if sensor_id in [0x01, 0x02, 0x08]:  # 有效的传感器ID
+                        # 提取数据 (2字节，高位在前)
+                        raw_value = (self.receive_buffer[i+4] << 8) | self.receive_buffer[i+5]
+                        hex_frame = ' '.join([f'{b:02X}' for b in self.receive_buffer[i:i+9]])
+                        self.debug_print(f"✓ 找到传感器帧 (位置{i}): {hex_frame}")
+                        self.debug_print(f"  传感器ID: 0x{sensor_id:02X}, 数据值: {raw_value}")
+                        self.debug_print(f"  校验和: 0x{self.receive_buffer[i+6]:02X}")
+                        
+                        self.process_sensor_data(sensor_id, raw_value)
+                        frames_parsed += 1
+                        self.root.after(0, lambda f=hex_frame: self.frame_display.config(
+                            text=f"解析: {f}"))
+                        
+                        i += 9
+                        continue
             
-            # 现在缓冲区以 AA 55 开头
-            # 检查是否有完整帧（最小9字节）
-            if len(self.receive_buffer) < 9:
-                self.debug_print(f"数据不足9字节，等待更多数据")
-                break
-            
-            # 检查数据长度字节
-            data_len = self.receive_buffer[2]
-            
-            # 根据数据长度计算帧长度
-            if data_len == 1:
-                # 温度帧：AA 55 01 03 55 57 55 AA (9字节)
-                expected_len = 9
-            elif data_len == 2:
-                # 其他传感器帧：AA 55 02 ID DATA_H DATA_L CHECKSUM 55 AA (9字节)
-                expected_len = 9
-            else:
-                # 未知长度，尝试9字节
-                expected_len = 9
-            
-            if len(self.receive_buffer) < expected_len:
-                self.debug_print(f"需要 {expected_len} 字节，当前 {len(self.receive_buffer)} 字节")
-                break
-            
-            # 提取帧
-            frame = self.receive_buffer[:expected_len]
-            
-            # 验证帧尾
-            if frame[-2] == 0x55 and frame[-1] == 0xAA:
-                # 帧尾正确，解析数据
-                hex_frame = ' '.join([f'{b:02X}' for b in frame])
-                self.debug_print(f"找到完整帧: {hex_frame}")
-                
-                # 解析传感器ID和数据
-                sensor_id = frame[3]
-                
-                # 解析数据值
-                if data_len == 1:
-                    value = frame[4]  # 温度：1字节数据
-                elif data_len == 2:
-                    # 2字节数据（高位在前）
-                    value = (frame[4] << 8) | frame[5]
-                else:
-                    value = 0
-                
-                # 处理传感器数据
-                self.process_sensor_data(sensor_id, value)
-                frames_parsed += 1
-                
-                # 更新显示
-                self.root.after(0, lambda f=hex_frame: self.frame_display.config(
-                    text=f"解析帧: {f}"))
-                
-                # 移除已处理的帧
-                self.receive_buffer = self.receive_buffer[expected_len:]
-            else:
-                # 帧尾不正确，跳过第一个字节继续查找
-                self.debug_print("帧尾不正确，跳过第一个字节")
-                self.receive_buffer = self.receive_buffer[1:]
+            # 如果没有找到有效帧，向前移动一个字节
+            i += 1
+        
+        # 移除已解析的数据
+        if i > 0:
+            self.receive_buffer = self.receive_buffer[i:]
+            self.debug_print(f"移除已解析的{i}字节，缓冲区剩余: {len(self.receive_buffer)}字节")
         
         if frames_parsed > 0:
             self.debug_print(f"成功解析了 {frames_parsed} 个数据帧")
-            self.debug_print(f"解析后缓冲区剩余: {len(self.receive_buffer)} 字节")
     
     def process_sensor_data(self, sensor_id, raw_value):
         """处理传感器数据"""
@@ -525,8 +504,7 @@ class SensorMonitorApp:
             if sensor_key == 'fire':
                 value = raw_value / 10.0  # 可燃气体除以10
             elif sensor_key == 'temp':
-                # 温度可能是实际值
-                value = float(raw_value)
+                value = float(raw_value)  # 温度直接使用
             else:
                 value = float(raw_value)
             
@@ -549,43 +527,45 @@ class SensorMonitorApp:
         """发送测试数据"""
         self.debug_print("发送测试数据")
         
-        # 根据你提供的实际数据创建测试帧
+        # 测试数据帧
         test_frames = [
-            # 温度: 0x55 = 85°C
-            b'\xAA\x55\x01\x03\x55\x57\x55\xAA',
-            # 一氧化碳: 0x0005 = 5 ppm
-            b'\xAA\x55\x02\x01\x00\x05\x06\x55\xAA',
-            # 可燃气体: 0x0003 = 3 (实际0.3%LEL)
-            b'\xAA\x55\x02\x08\x00\x03\x0B\x55\xAA',
-            # 空气质量: 0x012C = 300 AQI
-            b'\xAA\x55\x02\x02\x01\x2C\x2F\x55\xAA'
+            b'\xAA\x55\x01\x03\x13\x15\x55\xAA',          # 温度: 19°C
+            b'\xAA\x55\x02\x01\x00\x02\x03\x55\xAA',      # CO: 2 ppm
+            b'\xAA\x55\x02\x08\x00\x02\x0A\x55\xAA',      # 可燃气体: 0.2%LEL
+            b'\xAA\x55\x02\x02\x01\x2C\x2F\x55\xAA',      # 空气质量: 300 AQI
         ]
         
         for i, frame in enumerate(test_frames):
             hex_str = ' '.join([f'{b:02X}' for b in frame])
-            self.debug_print(f"模拟接收帧 {i+1}: {hex_str}")
-            # 模拟分割接收：先发1字节，再发8字节
-            self.receive_buffer.extend(frame[:1])
-            time.sleep(0.01)
-            self.receive_buffer.extend(frame[1:])
-            self.parse_data_frames()
+            self.debug_print(f"发送测试帧 {i+1}: {hex_str}")
+            
+            # 添加到接收缓冲区
+            self.receive_buffer.extend(frame)
+            
+            # 解析
+            self.parse_data_frames_simple()
+            
             time.sleep(0.5)
         
         messagebox.showinfo("测试", "测试数据已发送")
     
     def debug_output(self):
         """调试输出当前状态"""
-        self.debug_print("=== 调试信息 ===")
+        self.debug_print("=== 系统状态调试 ===")
         self.debug_print(f"串口连接状态: {self.connected}")
         self.debug_print(f"接收缓冲区大小: {len(self.receive_buffer)} 字节")
-        self.debug_print(f"时间数据长度: {len(self.time_data)}")
         
-        for key, data in self.sensor_data.items():
-            self.debug_print(f"{data['label']}: {data['current']:.1f}{data['unit']}, 历史数据: {len(data['history'])}")
+        # 显示传感器数据
+        for key in ['co', 'fire', 'air', 'temp']:
+            data = self.sensor_data[key]
+            self.debug_print(f"{data['label']}: {data['current']:.1f}{data['unit']} (阈值: {data['threshold']}{data['unit']})")
         
-        if self.receive_buffer:
-            hex_str = ' '.join([f'{b:02X}' for b in self.receive_buffer[:100]])
-            self.debug_print(f"缓冲区前100字节: {hex_str}")
+        # 显示缓冲区内容
+        if len(self.receive_buffer) > 0:
+            hex_buffer = ' '.join([f'{b:02X}' for b in self.receive_buffer[:100]])
+            self.debug_print(f"缓冲区前100字节: {hex_buffer}")
+        else:
+            self.debug_print("缓冲区为空")
     
     def update_charts(self):
         """更新图表数据"""
@@ -831,7 +811,7 @@ class SensorMonitorApp:
 def main():
     # 添加启动日志
     print("=" * 50)
-    print("智能传感器监控系统启动 - 处理分割接收版本")
+    print("智能传感器监控系统启动 - 简化解析版本")
     print("=" * 50)
     sys.stdout.flush()
     

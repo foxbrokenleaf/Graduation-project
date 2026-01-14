@@ -2,6 +2,7 @@
 #include <math.h>
 #include "adc.h"
 #include <stdio.h>
+#include "main.h"
 
 // 传感器参数配置
 #define VREF 5.0                      // ADC参考电压

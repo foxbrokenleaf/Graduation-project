@@ -38,6 +38,7 @@ extern "C" {
 /* USER CODE BEGIN ET */
 extern UART_HandleTypeDef huart1;
 extern ADC_HandleTypeDef hadc1;
+extern TIM_HandleTypeDef htim2;
 extern uint8_t Warn_Value;
 extern uint8_t RxBuff[1];      //�����жϽ������ݵ�����
 extern uint8_t DataBuff[256]; //������յ������ݵ�����
@@ -52,6 +53,9 @@ extern uint16_t CO_Warn_Value;
 extern uint16_t Fire_Warn_Value;   //��ȼ����
 extern uint16_t Air_Warn_Level;    //��������
 extern uint16_t Temptrue_Warn_Value;     //�¶�
+
+extern uint32_t SystemTick;
+extern uint16_t TIM_Counter;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -78,10 +82,6 @@ void Error_Handler(void);
 #define MQ_9_GPIO_Port GPIOA
 #define MQ_135_Pin GPIO_PIN_4
 #define MQ_135_GPIO_Port GPIOA
-#define DHT11_RXD_Pin GPIO_PIN_10
-#define DHT11_RXD_GPIO_Port GPIOB
-#define DHT11_TX_Pin GPIO_PIN_11
-#define DHT11_TX_GPIO_Port GPIOB
 #define OLED_SCL_Pin GPIO_PIN_6
 #define OLED_SCL_GPIO_Port GPIOB
 #define OLED_SDA_Pin GPIO_PIN_7
@@ -89,6 +89,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 void Clear_ReceiveBuff();
+uint8_t Read_Temperature(void);
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

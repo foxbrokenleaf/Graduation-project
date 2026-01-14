@@ -41,7 +41,3 @@ uint16_t Read_MQ_135(){
 
     return HAL_ADC_GetValue(&hadc1);
 }
-
-uint8_t Read_Temperature(void){
-    return 25;
-}
