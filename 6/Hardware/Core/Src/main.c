@@ -87,6 +87,8 @@ uint8_t SendDataFlag = 1;
 
 float f_Temptrue_Value = 0.0;
 float f_humi_Value = 0.0;
+
+char *ipaddress;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -178,21 +180,14 @@ int main(void)
         printf("ESP-01S Ready!\r\n");
     }
 
-    
-    if (ESP01S_Restart() == ESP01S_OK)
-    {
-        printf("ESP-01S Restart!\r\n");
-    }
-    
-    if (ESP01S_Test() == ESP01S_OK)
-    {
-        printf("ESP-01S Ready!\r\n");
-    }    
-
-    if (ESP01S_ConnectAP("FBLPC", "12345678") == ESP01S_OK)
+    if (ESP01S_ConnectAP("3BC4E533", "12345678") == ESP01S_OK)
     {
         printf("ESP-01S Connect Wi-Fi!\r\n");
     }    
+    if (ESP01S_GetLocalIP(ipaddress) == ESP01S_OK)
+    {
+        printf("ESP-01S ipaddress=%s\r\n", ipaddress);
+    }        
 
     switch (ESP01S_StartUDP("192.168.137.1", 8080, 8080, 2, 0))
     {
