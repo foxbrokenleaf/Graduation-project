@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter import ttk, messagebox, StringVar, IntVar
 from datetime import datetime, timedelta
@@ -101,8 +100,22 @@ class SensorMonitorApp:
     def debug_print(self, message):
         """调试输出，确保在终端显示"""
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        print(f"[{timestamp}] {message}")
-        sys.stdout.flush()
+        formatted_message = f"[{timestamp}] {message}"
+        
+        try:
+            print(formatted_message)
+            
+            # 安全地刷新输出 - 只有在 stdout 不为 None 时才刷新
+            if sys.stdout is not None:
+                sys.stdout.flush()
+        except Exception as e:
+            # 如果打印失败，尝试写入文件
+            try:
+                with open("debug.log", "a", encoding="utf-8") as f:
+                    f.write(f"[{timestamp}] {message}\n")
+                    f.write(f"[{timestamp}] 打印错误: {e}\n")
+            except:
+                pass  # 如果连文件写入都失败，就放弃
     
     def setup_chinese_font(self):
         """设置中文字体支持"""
@@ -360,8 +373,8 @@ class SensorMonitorApp:
         threshold_configs = [
             ('co', '一氧化碳阈值:', 50, 'ppm', '0-100 ppm'),
             ('fire', '可燃气体阈值:', 30, '%LEL', '0-50 %LEL'),
-            ('air', '空气质量阈值:', 100, 'AQI', '0-150 AQI'),
-            ('temp', '温度阈值:', 35, '°C', '0-50 °C')
+            ('air', '空气质量阈值:', 100, 'AQI', '0-150 AQI')
+            # ('temp', '温度阈值:', 35, '°C', '0-50 °C')
         ]
         
         for i, (key, label_text, default_value, unit, range_text) in enumerate(threshold_configs):
@@ -1174,12 +1187,19 @@ class SensorMonitorApp:
         self.close_udp_server()
         self.root.destroy()
 
+
 def main():
     # 添加启动日志
     print("=" * 50)
     print("智能传感器监控系统启动 - 支持串口和UDP网络")
     print("=" * 50)
-    sys.stdout.flush()
+    
+    # 可选：检查并刷新输出，但已添加安全处理
+    try:
+        if sys.stdout is not None:
+            sys.stdout.flush()
+    except:
+        pass  # 如果失败，继续执行
     
     root = tk.Tk()
     app = SensorMonitorApp(root)
@@ -1189,6 +1209,7 @@ def main():
     
     # 运行主循环
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()
