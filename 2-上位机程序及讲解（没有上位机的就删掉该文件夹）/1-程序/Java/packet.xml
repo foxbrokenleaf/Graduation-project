@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch4jConfig>
+  <dontWrapJar>false</dontWrapJar>
+  <headerType>gui</headerType>
+  <jar>D:\MoneyDeveploProject\bishe\11\Software\ShangWeiJi\out\artifacts\ShangWeiJi_jar\ShangWeiJi.jar</jar>
+  <outfile>D:\MoneyDeveploProject\bishe\11\Software\Exec\Software.exe</outfile>
+  <errTitle></errTitle>
+  <cmdLine></cmdLine>
+  <chdir>.</chdir>
+  <priority>normal</priority>
+  <downloadUrl></downloadUrl>
+  <supportUrl></supportUrl>
+  <stayAlive>false</stayAlive>
+  <restartOnCrash>false</restartOnCrash>
+  <manifest></manifest>
+  <icon></icon>
+  <jre>
+    <path>./jdk21/</path>
+    <requiresJdk>true</requiresJdk>
+    <requires64Bit>false</requires64Bit>
+    <minVersion></minVersion>
+    <maxVersion></maxVersion>
+  </jre>
+  <versionInfo>
+    <fileVersion>0.0.0.0</fileVersion>
+    <txtFileVersion>0.0.Release</txtFileVersion>
+    <fileDescription>基于单片机的吸烟室多参数联动排风系统设计</fileDescription>
+    <copyright>无</copyright>
+    <productVersion>0.0.0.0</productVersion>
+    <txtProductVersion>0.0.Release</txtProductVersion>
+    <productName>基于单片机的吸烟室多参数联动排风系统设计</productName>
+    <companyName></companyName>
+    <internalName>狐碎叶</internalName>
+    <originalFilename>Software.exe</originalFilename>
+    <trademarks></trademarks>
+    <language>SIMPLIFIED_CHINESE</language>
+  </versionInfo>
+  <messages>
+    <startupErr>An error occurred while starting the application.</startupErr>
+    <jreNotFoundErr>This application requires a Java Runtime Environment.</jreNotFoundErr>
+    <jreVersionErr>This application requires a Java Runtime Environment</jreVersionErr>
+    <launcherErr>The registry refers to a nonexistent Java Runtime Environment installation or the runtime is corrupted.</launcherErr>
+    <instanceAlreadyExistsMsg>An application instance is already running.</instanceAlreadyExistsMsg>
+  </messages>
+</launch4jConfig>
