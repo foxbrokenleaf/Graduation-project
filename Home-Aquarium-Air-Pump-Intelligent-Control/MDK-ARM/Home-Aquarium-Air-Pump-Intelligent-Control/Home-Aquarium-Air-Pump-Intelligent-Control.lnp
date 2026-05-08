@@ -1,0 +1,27 @@
+--cpu Cortex-M3
+"home-aquarium-air-pump-intelligent-control\startup_stm32f103xb.o"
+"home-aquarium-air-pump-intelligent-control\main.o"
+"home-aquarium-air-pump-intelligent-control\gpio.o"
+"home-aquarium-air-pump-intelligent-control\adc.o"
+"home-aquarium-air-pump-intelligent-control\usart.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_it.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_msp.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_gpio_ex.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_adc.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_adc_ex.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_rcc.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_rcc_ex.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_gpio.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_dma.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_cortex.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_pwr.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_flash.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_flash_ex.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_exti.o"
+"home-aquarium-air-pump-intelligent-control\stm32f1xx_hal_uart.o"
+"home-aquarium-air-pump-intelligent-control\system_stm32f1xx.o"
+--strict --scatter "Home-Aquarium-Air-Pump-Intelligent-Control\Home-Aquarium-Air-Pump-Intelligent-Control.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "Home-Aquarium-Air-Pump-Intelligent-Control.map" -o Home-Aquarium-Air-Pump-Intelligent-Control\Home-Aquarium-Air-Pump-Intelligent-Control.axf
