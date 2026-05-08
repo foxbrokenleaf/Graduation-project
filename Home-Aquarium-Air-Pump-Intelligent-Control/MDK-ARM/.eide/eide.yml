@@ -52,7 +52,10 @@ virtualFolder:
             - path: ../Core/Src/system_stm32f1xx.c
           folders: []
     - name: Bsp
-      files: []
+      files:
+        - path: ../Drivers/Private/Key.c
+        - path: ../Drivers/Private/OLED.c
+        - path: ../Drivers/Private/OLED_Data.c
       folders: []
     - name: ::CMSIS
       files: []
