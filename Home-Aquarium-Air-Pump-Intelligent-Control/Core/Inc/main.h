@@ -85,14 +85,14 @@ void Error_Handler(void);
 #define K2_GPIO_Port GPIOB
 #define K1_Pin GPIO_PIN_14
 #define K1_GPIO_Port GPIOB
-#define BT_RXD_Pin GPIO_PIN_9
-#define BT_RXD_GPIO_Port GPIOA
-#define BT_TXD_Pin GPIO_PIN_10
-#define BT_TXD_GPIO_Port GPIOA
 #define SWDIO_Pin GPIO_PIN_13
 #define SWDIO_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
 #define SWCLK_GPIO_Port GPIOA
+#define BT_RXD_Pin GPIO_PIN_6
+#define BT_RXD_GPIO_Port GPIOB
+#define BT_TXD_Pin GPIO_PIN_7
+#define BT_TXD_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

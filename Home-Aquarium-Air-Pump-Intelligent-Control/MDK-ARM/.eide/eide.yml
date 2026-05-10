@@ -3,7 +3,8 @@ name: Home-Aquarium-Air-Pump-Intelligent-Control
 type: ARM
 deviceName: null
 packDir: null
-srcDirs: []
+srcDirs:
+  - ../Drivers/Private
 virtualFolder:
   name: <virtual_root>
   files: []
@@ -23,6 +24,7 @@ virtualFolder:
                 - path: ../Core/Src/main.c
                 - path: ../Core/Src/gpio.c
                 - path: ../Core/Src/adc.c
+                - path: ../Core/Src/tim.c
                 - path: ../Core/Src/usart.c
                 - path: ../Core/Src/stm32f1xx_it.c
                 - path: ../Core/Src/stm32f1xx_hal_msp.c
@@ -45,6 +47,8 @@ virtualFolder:
             - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c
             - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c
             - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_exti.c
+            - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c
+            - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c
             - path: ../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c
           folders: []
         - name: CMSIS
@@ -52,10 +56,7 @@ virtualFolder:
             - path: ../Core/Src/system_stm32f1xx.c
           folders: []
     - name: Bsp
-      files:
-        - path: ../Drivers/Private/Key.c
-        - path: ../Drivers/Private/OLED.c
-        - path: ../Drivers/Private/OLED_Data.c
+      files: []
       folders: []
     - name: ::CMSIS
       files: []
