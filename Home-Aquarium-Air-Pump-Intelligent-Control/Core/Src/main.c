@@ -43,7 +43,8 @@ typedef enum{
 typedef enum{
   UI_Main = 0,
   UI_Level,
-  UI_Tiemr
+  UI_Tiemr_Motor,
+  UI_Tiemr_AirPump
 }UIIndex_;
 /* USER CODE END PTD */
 
@@ -67,6 +68,9 @@ uint32_t Timer3Tick = 0;
 uint16_t UILevelCloseTick = 0;
 AirPumpLevel apl = AirPump_Low;
 uint8_t UiIndex = UI_Main;
+uint8_t MenuLevel = 0;
+uint8_t TimerMotor[3] = { 0 };
+uint8_t TimerAirPump[3][3] = { 0 };
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -148,20 +152,27 @@ int main(void)
     if(Timer3Tick >= 150){
       Timer3Tick = 0;
       if(HAL_GPIO_ReadPin(K1_GPIO_Port, K1_Pin) == GPIO_PIN_SET){
-        HAL_GPIO_TogglePin(QiBeng_GPIO_Port, QiBeng_Pin);
-        // apl =  HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin) ? AirPump_Close : AirPump_Open;
-        // HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_4);
         
       }
       if(HAL_GPIO_ReadPin(K2_GPIO_Port, K2_Pin) == GPIO_PIN_SET){
-        UiIndex = UI_Level;
-        UILevelCloseTick = 0;
-        apl++;
-        if(apl == AirPump_Open) apl = AirPump_Low;
+        if(MenuLevel == 0) UiIndex++;
+        if(MenuLevel == 1){
+          apl++;
+          if(apl == AirPump_Open) apl = AirPump_Low;
+        }           
+        UiIndex %= 4;        
+        // UiIndex = UI_Level;
+        // UILevelCloseTick = 0;
+        // apl++;
+        // if(apl == AirPump_Open) apl = AirPump_Low;
       }
       if(HAL_GPIO_ReadPin(K3_GPIO_Port, K3_Pin) == GPIO_PIN_SET){
-        
-        
+        if(UiIndex == UI_Main) HAL_GPIO_TogglePin(QiBeng_GPIO_Port, QiBeng_Pin);
+        if(UiIndex != UI_Main){
+          MenuLevel++;
+          MenuLevel %= 2;
+        }
+
       } 
     }
        
@@ -169,32 +180,51 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+    switch(UiIndex){
+      case UI_Main:
+        OLED_ShowString(0, 0, "AP:", OLED_6X8);
+        OLED_ShowString(18, 0, HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin) ? "Close|" : "Open |", OLED_6X8);
+        OLED_ShowString(54, 0, "O_2(mL)", OLED_6X8);
+        OLED_ShowNum(54, 8, (Timer2Tick / 500) * 9, 7, OLED_6X8);
+
+        OLED_ShowString(0, 8, "WQ:", OLED_6X8);
+        OLED_ShowString(18, 8, "00.00|", OLED_6X8); 
+        break;
+      case UI_Level:
+        OLED_ShowString(6, 0, "Air Pump Level", OLED_6X8);
+        OLED_ShowString(27, 8, GetAirPumpLevelStr(), OLED_6X8);     
+
+        if(apl == AirPump_Low) Timer2Tick_F = 500 * 14;
+        if(apl == AirPump_Med) Timer2Tick_F = 500 * 56;
+        if(apl == AirPump_High) Timer2Tick_F = 500 * 112;     
+        break;
+      case UI_Tiemr_Motor:
+        OLED_ShowString(18, 0, "Timer Wash", OLED_6X8);
+        OLED_ShowString(24, 8, "00:00:00", OLED_6X8);
+        OLED_ShowNum(24, 8, TimerMotor[0], 2, OLED_6X8);
+        OLED_ShowNum(42, 8, TimerMotor[1], 2, OLED_6X8);
+        OLED_ShowNum(60, 8, TimerMotor[2], 2, OLED_6X8);        
+        break;
+      case UI_Tiemr_AirPump:
+        OLED_ShowString(9, 0, "Timer AirPump", OLED_6X8);
+        OLED_ShowString(24, 8, "00:00:00", OLED_6X8);
+        OLED_ShowNum(24, 8, TimerAirPump[0][0], 2, OLED_6X8);
+        OLED_ShowNum(42, 8, TimerAirPump[0][1], 2, OLED_6X8);
+        OLED_ShowNum(60, 8, TimerAirPump[0][2], 2, OLED_6X8);  
+        break;
+      default:
+        OLED_ShowString(0, 0, ">No UI Data", OLED_8X16);
+        break;
+    }
+
     //500ms -> 9mL
     if(HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin) == GPIO_PIN_RESET && Timer2Tick >= Timer2Tick_F){
       Timer2Tick = 0;
       HAL_GPIO_WritePin(QiBeng_GPIO_Port, QiBeng_Pin, GPIO_PIN_SET);
     }
     if(HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin)) Timer2Tick = 0;
-    if(UiIndex != UI_Level) UILevelCloseTick = 0;
-    if(UiIndex == UI_Main){
-      OLED_ShowString(0, 0, "AP:", OLED_6X8);
-      OLED_ShowString(18, 0, HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin) ? "Close|" : "Open |", OLED_6X8);
-      OLED_ShowString(54, 0, "O_2(mL)", OLED_6X8);
-      OLED_ShowNum(54, 8, (Timer2Tick / 500) * 9, 7, OLED_6X8);
 
-      OLED_ShowString(0, 8, "WQ:", OLED_6X8);
-      OLED_ShowString(18, 8, "00.00|", OLED_6X8); 
-    }
-    else if(UiIndex == UI_Level){
-      OLED_ShowString(6, 0, "Air Pump Level", OLED_6X8);
-      OLED_ShowString(24, 8, GetAirPumpLevelStr(), OLED_6X8);
-      if(UILevelCloseTick >= 3000){
-        UiIndex = UI_Main;
-        if(apl == AirPump_Low) Timer2Tick_F = 500 * 14;
-        if(apl == AirPump_Med) Timer2Tick_F = 500 * 56;
-        if(apl == AirPump_High) Timer2Tick_F = 500 * 112;
-      }
-    }
 
    
 
