@@ -57,6 +57,9 @@ typedef enum{
 #define TIMER_AIR_PUMP_CHANNEL_MAX 3
 #define UI_INDEX_MAX (UI_Tiemr_AirPump + TIMER_AIR_PUMP_CHANNEL_MAX)
 #define ADC_MAX_NUM 2*3
+
+#define BT_COMUNITCATION_AIR_PUMP_WORK_STATUE_SIGN 0x01
+#define BT_COMUNITCATION_AIR_PUMP_ERROR_CODE_SIGN 0x02
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -104,6 +107,8 @@ uint8_t TimerAirPumpChannel = 0;
 
 uint16_t ZuoDuAdcValue = 0;
 float ZuoDuValue = 0.0;
+
+uint8_t AirPumpErrorCode = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -154,6 +159,8 @@ int main(void)
   MX_TIM2_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
+  
+
   HAL_RTC_GetTime(&hrtc, &nTime, RTC_FORMAT_BIN);
   PrintfGunDong("Get RTC!");
   HAL_Delay(500);  
@@ -378,10 +385,13 @@ int main(void)
         break;
       }
     }
-    
+    if((4096 - (ADC_Value[0] + ADC_Value[2] + ADC_Value[4]) / 3) >= 2048) AirPumpErrorCode = 1;
+    else AirPumpErrorCode = 0;
     if(ZuoDuAdcValue >= 2048) HAL_GPIO_WritePin(Buzzer_GPIO_Port, Buzzer_Pin, GPIO_PIN_RESET);
     else HAL_GPIO_WritePin(Buzzer_GPIO_Port, Buzzer_Pin, GPIO_PIN_SET);
     
+    printf("[BT-%02X]:%s\r\n", BT_COMUNITCATION_AIR_PUMP_WORK_STATUE_SIGN, HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin) ? "Close" : "Open ");
+    printf("[BT-%02X]:%s\r\n", BT_COMUNITCATION_AIR_PUMP_ERROR_CODE_SIGN, AirPumpErrorCode ? "Error" : "Ok");
 
     OLED_Update();
   }
@@ -448,6 +458,7 @@ void PrintfGunDong(char *format, ...){
     OLED_ShowString(0, 0, PrintfString[0], OLED_6X8);
     OLED_ShowString(0, 8, PrintfString[1], OLED_6X8);
     OLED_Update();
+    printf("%s\r\n", PrintfString[1]);
 }
 
 char* GetAirPumpLevelStr(void){
@@ -468,6 +479,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
   }  
 }
+
+int fputc(int ch, FILE *f){
+  HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+  return ch;
+}
+
 /* USER CODE END 4 */
 
 /**
