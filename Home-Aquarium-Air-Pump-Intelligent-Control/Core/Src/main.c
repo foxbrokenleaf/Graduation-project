@@ -385,7 +385,7 @@ int main(void)
         break;
       }
     }
-    if((4096 - (ADC_Value[0] + ADC_Value[2] + ADC_Value[4]) / 3) >= 2048) AirPumpErrorCode = 1;
+    if((4096 - (ADC_Value[0] + ADC_Value[2] + ADC_Value[4]) / 3) >= 1024) AirPumpErrorCode = 1;
     else AirPumpErrorCode = 0;
     if(ZuoDuAdcValue >= 2048) HAL_GPIO_WritePin(Buzzer_GPIO_Port, Buzzer_Pin, GPIO_PIN_RESET);
     else HAL_GPIO_WritePin(Buzzer_GPIO_Port, Buzzer_Pin, GPIO_PIN_SET);
