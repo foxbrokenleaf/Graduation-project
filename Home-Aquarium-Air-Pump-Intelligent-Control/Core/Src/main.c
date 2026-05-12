@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "dma.h"
 #include "rtc.h"
 #include "tim.h"
 #include "usart.h"
@@ -42,6 +43,7 @@ typedef enum{
 }AirPumpLevel;
 typedef enum{
   UI_Main = 0,
+  UI_ADC,
   UI_Level,
   UI_RTC,
   UI_Tiemr_Motor,
@@ -54,6 +56,7 @@ typedef enum{
 #define RUN_MODE 1  // 1 debug 0 normal
 #define TIMER_AIR_PUMP_CHANNEL_MAX 3
 #define UI_INDEX_MAX (UI_Tiemr_AirPump + TIMER_AIR_PUMP_CHANNEL_MAX)
+#define ADC_MAX_NUM 2*3
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -65,6 +68,8 @@ typedef enum{
 
 /* USER CODE BEGIN PV */
 RTC_TimeTypeDef nTime;
+
+uint16_t ADC_Value[ADC_MAX_NUM] = {0};
 
 uint32_t Timer2CounterTick = 0;
 
@@ -96,6 +101,9 @@ uint8_t TimerAirPumpAutoRun[TIMER_AIR_PUMP_CHANNEL_MAX] = { 0 };
 uint8_t TimerAirPumpAutoRunTask[TIMER_AIR_PUMP_CHANNEL_MAX] = { 0 };
 uint8_t TimerAirPumpManuallyFlag = 0;
 uint8_t TimerAirPumpChannel = 0;
+
+uint16_t ZuoDuAdcValue = 0;
+float ZuoDuValue = 0.0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -139,6 +147,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   MX_USART1_UART_Init();
   MX_TIM3_Init();
@@ -166,6 +175,7 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim3);
   PrintfGunDong("Star TIM3!");
   HAL_Delay(500);
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)ADC_Value, ADC_MAX_NUM);
 
   if(apl == AirPump_Low) Timer2Tick_F = 500 * 14;
   if(apl == AirPump_Med) Timer2Tick_F = 500 * 56;
@@ -183,6 +193,7 @@ int main(void)
       Timer2CounterTick = 0;
     }
     HAL_RTC_GetTime(&hrtc, &nTime, RTC_FORMAT_BIN);
+    ZuoDuAdcValue = 4096 - (ADC_Value[1] + ADC_Value[3] + ADC_Value[5]) / 3;
     if(Timer3Tick >= 150){
       Timer3Tick = 0;
       if(HAL_GPIO_ReadPin(K1_GPIO_Port, K1_Pin) == GPIO_PIN_SET){
@@ -262,11 +273,19 @@ int main(void)
       OLED_ShowString(0, 0, "AP:", OLED_6X8);
       OLED_ShowString(18, 0, HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin) ? "Close|" : "Open |", OLED_6X8);
       OLED_ShowString(54, 0, "O_2(mL)", OLED_6X8);
-      // OLED_ShowNum(54, 8, (Timer2Tick / 500) * 9, 7, OLED_6X8);
-      OLED_ShowNum(54, 8, Timer2TickAuto[0], 7, OLED_6X8);
+      OLED_ShowNum(54, 8, (Timer2Tick / 500) * 9, 7, OLED_6X8);
+      // OLED_ShowNum(54, 8, Timer2TickAuto[0], 7, OLED_6X8);
 
       OLED_ShowString(0, 8, "WQ:", OLED_6X8);
       OLED_ShowString(18, 8, "00.00|", OLED_6X8); 
+      ZuoDuValue = (ZuoDuAdcValue / 4096.0) * 100.0;
+      OLED_ShowFloatNum(18, 8, ZuoDuValue, 2, 2, OLED_6X8);
+    }
+    else if(UiIndex == UI_ADC){
+      OLED_ShowString(0, 0, "YaLi:", OLED_6X8);
+      OLED_ShowNum(30, 0, 4096 - (ADC_Value[0] + ADC_Value[2] + ADC_Value[4]) / 3, 4, OLED_6X8);
+      OLED_ShowString(0, 8, "ZuoDu:", OLED_6X8);
+      OLED_ShowNum(36, 8, ZuoDuAdcValue, 4, OLED_6X8);
     }
     else if(UiIndex == UI_Level){
       OLED_ShowString(6, 0, "Air Pump Level", OLED_6X8);
@@ -324,7 +343,7 @@ int main(void)
     if(HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin)) Timer2Tick = 0;
 
     if(TimerMotorTick_s == TimerMotorTick_s_End && TimerMotorTick_s_End != 0){
-      if(UiIndex == UI_Main) {
+      if(UiIndex != UI_Tiemr_Motor) {
         HAL_GPIO_WritePin(Motor_GPIO_Port, Motor_Pin, GPIO_PIN_RESET);
         TimerMotorTick_s_Run = TimerMotorTick_s + 5;
       }
@@ -342,15 +361,16 @@ int main(void)
           if(TimerAirPump[i][3] == AirPump_High) Timer2TickAuto_F[i] = 500 * 112;            
           // HAL_GPIO_WritePin(QiBeng_GPIO_Port, QiBeng_Pin, GPIO_PIN_RESET);
           TimerAirPumpAutoRunTask[i] = 1;
+          Timer2TickAuto[i] = 0;
         }
       }
       if(HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin) == GPIO_PIN_RESET && Timer2TickAuto[i] >= Timer2TickAuto_F[i] && TimerAirPumpManuallyFlag == 0){
         Timer2TickAuto[i] = 0;
         
-        // HAL_GPIO_WritePin(QiBeng_GPIO_Port, QiBeng_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(QiBeng_GPIO_Port, QiBeng_Pin, GPIO_PIN_SET);
         TimerAirPumpAutoRunTask[i] = 0;
       }    
-      if(HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin)) Timer2TickAuto[i] = 0;
+      // if(HAL_GPIO_ReadPin(QiBeng_GPIO_Port, QiBeng_Pin)) 
     }
     for(uint8_t i = 0;i < TIMER_AIR_PUMP_CHANNEL_MAX;i++){
       if(TimerAirPumpAutoRunTask[i]){
@@ -358,14 +378,10 @@ int main(void)
         break;
       }
     }
-    for(uint8_t i = 0;i < TIMER_AIR_PUMP_CHANNEL_MAX;i++){
-      if(TimerAirPumpAutoRunTask[i] == 0){
-        if(i == 5) HAL_GPIO_WritePin(QiBeng_GPIO_Port, QiBeng_Pin, GPIO_PIN_SET);
-      }
-      else break;
-    }
-
-   
+    
+    if(ZuoDuAdcValue >= 2048) HAL_GPIO_WritePin(Buzzer_GPIO_Port, Buzzer_Pin, GPIO_PIN_RESET);
+    else HAL_GPIO_WritePin(Buzzer_GPIO_Port, Buzzer_Pin, GPIO_PIN_SET);
+    
 
     OLED_Update();
   }

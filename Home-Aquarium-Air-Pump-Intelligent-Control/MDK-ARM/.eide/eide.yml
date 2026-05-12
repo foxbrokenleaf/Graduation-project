@@ -24,6 +24,7 @@ virtualFolder:
                 - path: ../Core/Src/main.c
                 - path: ../Core/Src/gpio.c
                 - path: ../Core/Src/adc.c
+                - path: ../Core/Src/dma.c
                 - path: ../Core/Src/rtc.c
                 - path: ../Core/Src/tim.c
                 - path: ../Core/Src/usart.c
