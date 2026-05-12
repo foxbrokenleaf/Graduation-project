@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">家庭鱼缸气泵控制智能化设计与实现</string>
+    <string name="label_air_pump_work">气泵工作状态：</string>
+    <string name="label_air_pump_error">气泵故障状态：</string>
+    <string name="work_status_open">开启</string>
+    <string name="work_status_close">关闭</string>
+    <string name="error_status_true">故障</string>
+    <string name="error_status_false">无故障</string>
+</resources>
